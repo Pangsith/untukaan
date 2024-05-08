@@ -1,4 +1,4 @@
-const foodModel = require(`../models/index`).food;
+const coffeeModel = require(`../models/index`).coffee;
 const listModel = require(`../models/index`).order_list;
 const detailModel = require(`../models/index`).order_detail;
 
@@ -6,47 +6,47 @@ const Op = require(`sequelize`).Op;
 
 exports.addOrder = async (request, response) => {
   try {
-    const today = new Date();
+    const today = request.body.tanggal;
 
     const dataOrderList = {
       customer_name: request.body.customer_name,
       table_number: request.body.table_number,
-      order_date: today.toString(),
+      order_date: today,
     };
 
     // console.log(dataOrderList);
     const newOrderList = await listModel.create(dataOrderList);
 
-    const banyakFood = request.body.banyakFood;
+    const banyakcoffee = request.body.banyakcoffee;
     /*
         [
             {
-                makananID: 1,
+                coffeeID: 1,
                 kuantitas: 2
             },
             {
-                makananID: 2,
+                coffeeID: 2,
                 kuantitas: 3
             }
         ]
         */
 
-    for (let index = 0; index < banyakFood.length; index++) {
-      const foodData = await foodModel.findOne({
-        where: { makananID: banyakFood[index].makananID },
+    for (let index = 0; index < banyakcoffee.length; index++) {
+      const coffeeData = await coffeeModel.findOne({
+        where: { coffeeID: banyakcoffee[index].coffeeID },
       });
-      // console.log(foodData);
-      if (!foodData) {
+      // console.log(coffeeData);
+      if (!coffeeData) {
         return response.json({
           success: false,
-          message: "ID food tidak ada di database",
+          message: "ID coffee tidak ada di database",
         });
       }
       let newDetail = {
         order_id: newOrderList.listID,
-        food_id: foodData.makananID,
-        quantity: banyakFood[index].quantity,
-        harga: foodData.price * banyakFood[index].quantity,
+        coffee_id: coffeeData.coffeeID,
+        quantity: banyakcoffee[index].quantity,
+        price: coffeeData.price * banyakcoffee[index].quantity,
       };
 
       await detailModel.create(newDetail);
@@ -66,18 +66,17 @@ exports.addOrder = async (request, response) => {
 
 exports.showHistory = async (request, response) => {
   try {
-    const jumlahData = await listModel.findAll();
-    let a = [];
-    for (let index = 1; index <= jumlahData.length; index++) {
-      let coba = await listModel.findOne({ where: { listID: index } });
-      let coba2 = await detailModel.findAll({ where: { order_id: index } });
-      a.push(coba);
-      a.push(coba2);
-    }
+    const jumlahData = await listModel.findAll({
+      include:[{
+        model: detailModel,
+        as: "orderDetail"
+      }]
+    });
+
 
     return response.json({
       success: true,
-      data: a,
+      data: jumlahData,
     });
   } catch (error) {
     return response.json({
